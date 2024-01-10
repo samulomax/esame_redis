@@ -16,6 +16,10 @@ def register_user(username, password):
 
     hashed_password = hashlib.sha256(password.encode()).hexdigest()
     client.hset('users', username, hashed_password)
+    
+    # Inizializza la modalità "Do Not Disturb" a False per il nuovo utente
+    client.hset('dnd', username, 'False')
+    
     return True
 
 def authenticate_user(username, password):
@@ -31,58 +35,69 @@ def authenticate_user(username, password):
 
     return False
 
-def search_users(query):
+def get_do_not_disturb_status(username):
     client = redis_client()
-    all_users = client.hkeys('users')
-    matching_users = [user.decode() for user in all_users if query.lower() in user.decode().lower()]
-    return matching_users
+    # Ottieni lo stato della modalità "Do Not Disturb" dall'hash 'dnd'
+    return client.hget('dnd', username).decode() == 'True'
+
+def set_do_not_disturb(username, status=True):
+    client = redis_client()
+    
+    # Imposta la modalità "Do Not Disturb" nello stato specificato nell'hash 'dnd'
+    client.hset('dnd', username, str(status))
+    return 'attivata' if status else 'disattivata'
 
 def add_contact(username, contact_username):
     client = redis_client()
     
-    # Verifica se l'utente e il contatto esistono
     if client.hexists('users', username) and client.hexists('users', contact_username):
-        # Aggiungi il contatto alla lista del'utente
         client.sadd(f'contacts:{username}', contact_username)
         return True
     
     return False
 
-def set_do_not_disturb(username, status=True):
-    client = redis_client()
-    
-    # Imposta la modalità "Do Not Disturb"
-    client.set(f'dnd:{username}', int(status))
-    return True
+def login_actions(username):
+    while True:
+        action = input("Cosa vuoi fare? (aggiungi_contatti/dnd/esci): ").lower()
+
+        if action == 'aggiungi_contatti':
+            contact_username = input("Inserisci il nome utente da aggiungere ai contatti: ")
+            if add_contact(username, contact_username):
+                print(f"{contact_username} aggiunto ai tuoi contatti.")
+            else:
+                print(f"Impossibile aggiungere {contact_username} ai contatti.")
+        elif action == 'dnd':
+            new_status = input("Inserisci 'True' per attivare o 'False' per disattivare la modalità 'Do Not Disturb': ").lower()
+            if new_status in ['true', 'false']:
+                set_do_not_disturb(username, new_status == 'true')
+                print(f"Modalità 'Do Not Disturb' {'attivata' if new_status == 'true' else 'disattivata'}.")
+            else:
+                print("Input non valido. Inserisci 'True' o 'False'.")
+        elif action == 'esci':
+            break
+        else:
+            print("Scelta non valida. Scegli tra 'aggiungi_contatti', 'dnd' o 'esci'.")
 
 def main():
-    # Esegui l'autenticazione (puoi sostituire con i tuoi dati di accesso)
-    if authenticate_user('alice', 'password123'):
-        print("Login avvenuto con successo")
-        
-        # Esempio di ricerca utenti
-        search_query = 'a'
-        results = search_users(search_query)
-        
-        if results:
-            print(f"Utenti che corrispondono a '{search_query}': {results}")
-        else:
-            print(f"Nessun utente trovato per '{search_query}'")
+    while True:
+        choice = input("Cosa vuoi fare? (registrarmi/login/esci): ").lower()
 
-        # Esempio di aggiunta di un contatto
-        if add_contact('alice', 'bob'):
-            print("Contatto aggiunto con successo")
-        else:
-            print("Impossibile aggiungere il contatto")
+        if choice == 'registrarmi':
+            register_new_user()
+        elif choice == 'login':
+            username = input("Inserisci il nome utente: ")
+            password = input("Inserisci la password: ")
 
-        # Esempio di impostazione della modalità "Do Not Disturb"
-        if set_do_not_disturb('alice', True):
-            print("Modalità 'Do Not Disturb' attivata")
+            if authenticate_user(username, password):
+                print("Login avvenuto con successo")
+                login_actions(username)
+            else:
+                print("Credenziali non valide")
+        elif choice == 'esci':
+            print("A presto!")
+            break
         else:
-            print("Impossibile attivare la modalità 'Do Not Disturb'")
-
-    else:
-        print("Credenziali non valide")
+            print("Scelta non valida. Scegli tra 'registrarmi', 'login' o 'esci'.")
 
 if __name__ == "__main__":
     main()
