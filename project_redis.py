@@ -39,13 +39,13 @@ def authenticate_user(username, password):
 
 def get_do_not_disturb_status(username):
     client = redis_client()
-    # Ottieni lo stato della modalità "Do Not Disturb" dall'hash 'dnd'
+    # Ottieni lo stato della modalità "Do Not Disturb" 
     return client.hget('dnd', username).decode() == 'True'
 
 def set_do_not_disturb(username, status=True):
     client = redis_client()
     
-    # Imposta la modalità "Do Not Disturb" nello stato specificato nell'hash 'dnd'
+    # Imposta la modalità "Do Not Disturb"
     client.hset('dnd', username, str(status))
     return 'attivata' if status else 'disattivata'
 
@@ -99,7 +99,7 @@ def read_chat(username, other_user):
 
     print(f">> Chat con {other_user} <<")
     for message_str in chat_messages:
-        message_details = ast.literal_eval(message_str.decode())  # Sostituito eval con ast.literal_eval
+        message_details = ast.literal_eval(message_str.decode())  
         prefix = '>' if message_details['sender'] == username else '<'
         print(f"{prefix} {message_details['content']} [{message_details['timestamp']}]")
 
